@@ -138,12 +138,15 @@ behaviors:
    replaced/updated, instead of overwriting the payload, the existing and new
    payloads will be merged into a larger array (this only occurs when the
    existing and new payloads are both arrays, otherwise the payload is simply
-   replaced).
+   replaced). Entries are never merged into a job that is running or has
+   permanently failed; see
+   [Array payload merging](../job-key.md#array-payload-merging).
 2. when a task executes a batch job, it may return a list of promises that is
    the same length as the payload array. If any of these promises reject, then
    the job is said to have &ldquo;partial success&rdquo;, the result of which is
    it being sent back to the queue for a retry, but with the successful objects
-   removed from the payload so only the failed objects will be retried.
+   removed from the payload so only the failed objects will be retried; see
+   [Handling batch jobs](../tasks.md#handling-batch-jobs).
 
 Batch jobs can be useful where you need to aggregate multiple tasks together
 over time for efficiency; for example if you have a notification system you

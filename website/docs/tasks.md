@@ -204,6 +204,24 @@ any of these promises reject, then the job will be re-enqueued, but the payload
 will be overwritten to only contain the entries associated with the rejected
 promises &mdash; i.e. the successful entries will be removed.
 
+In more detail:
+
+- If the task executor throws (or rejects), the whole job fails and will be
+  retried with its full payload, as with any other job.
+- If it returns anything other than an array (e.g. nothing), the whole batch is
+  deemed successful and the job is deleted.
+- If it returns an array whose length differs from the payload&apos;s, a warning
+  is printed and the whole batch is deemed successful.
+- Otherwise every entry is awaited (via `Promise.allSettled`); entries may be
+  promises or plain values. If none reject, the job is deleted. If any reject,
+  the job fails: its payload is replaced with just the entries whose promises
+  rejected, its `last_error` is set to `Batch failures:` followed by each
+  rejection message on its own line, and (if it has attempts remaining) it is
+  retried with the usual [exponential backoff](./exponential-backoff.md).
+  `attempts` is tracked for the job as a whole, not per entry.
+- In this case the `job:error` and `job:failed` [events](./worker-events.md)
+  also receive a `batchJobErrors` array containing the rejection reasons.
+
 :::tip Accumulating batch payloads with job_key
 
 You can use [`job_key`](./job-key.md#array-payload-merging) with array payloads

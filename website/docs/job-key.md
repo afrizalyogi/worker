@@ -68,7 +68,8 @@ The full `job_key_mode` algorithm is roughly as follows:
   - a new job will be created with the new attributes.
 - Otherwise, if `job_key_mode` is `unsafe_dedupe`:
   - stop and return the existing job.
-- Otherwise, if the existing job is locked:
+- Otherwise, if the existing job is locked or has permanently failed
+  (`attempts >= max_attempts`):
   - it will have its `key` cleared
   - it will have its attempts set to `max_attempts` to avoid it running again
   - a new job will be created with the new attributes.
@@ -125,6 +126,23 @@ if no payload is specified), the standard replace behavior applies and the old
 payload will be lost.
 
 :::
+
+Merging only happens if the existing job is waiting to run (including waiting to
+retry after a failure). This applies to `add_job`/`addJob` and
+`add_jobs`/`addJobs` alike:
+
+- If the existing job is locked (i.e. running) or has permanently failed, the
+  new entries are **not** merged into it. Instead the existing job has its `key`
+  cleared and its `attempts` set to `max_attempts`, and a new job is created
+  containing only the new entries. If the running job then fails (fully or
+  partially) it will not be retried; it remains in the jobs table as permanently
+  failed (after a partial failure its payload will contain only the failed
+  entries).
+- If the existing job has failed but has attempts remaining (e.g. after a
+  [partial failure](./tasks.md#handling-batch-jobs)), the new entries are
+  appended to the remaining entries and `attempts` is reset to 0, so the old
+  entries get a fresh set of attempts. `run_at` is set to the new value, even in
+  `preserve_run_at` mode.
 
 ## Removing jobs
 
